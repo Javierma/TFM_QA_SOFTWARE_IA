@@ -56,44 +56,12 @@ def get_screen_info():
     return monitor_properties
 
 
-def train_model():
-    roberta_model = TFRobertaModel.frompretrained("roberta-base-uncased")
-    roberta_tokenizer = RobertaTokenizer.frompretrained("roberta-base-uncased")
-
-    data = tensorflow_datasets.load("")
-
-    train_dataset = data["train"]
-    validation_dataset = data["validation"]
-
-    train_dataset = glue_convert_examples_to_features(train_dataset, roberta_tokenizer, 128, 'mrpc')
-    validation_dataset = glue_convert_examples_to_features(validation_dataset, roberta_tokenizer, 128, 'mrpc')
-    roberta_train_dataset = train_dataset.shuffle(100).batch(32).repeat(2)
-    rooberta_validation_dataset = validation_dataset.batch(64)
-
-    optimizer = tf.keras.optimizar.Adam(learning_rate=3e-5, epsilon=1e-08, clipnorm=1.0)
-    loss = tf.keras.losses.SparseCategoricalCrossEntropy(from_logits=True)
-    metric = tf.keras.metrics.SparseCategoricalAccuracy('accuracy')
-    roberta_model.compile(optimizer=optimizer, loss=loss, metrics=[metric])
-
-    roberta_history = roberta_model.fit(
-        roberta_train_dataset,
-        epochs=2,
-        steps_per_epoch=115,
-        validation_data = roberta_validation_dataset,
-        validation_steps=7
-    )
-
-
 def get_dxl():
     # Ask about the database, username, software and project
-    database = '36677@NAVW1179.nav.es'
-    username = 'jmarrieta'
-    software = 'IMPACT'
-    project_name = 'IMPACT V2'
-    # database = input('Introduce la base de datos a la que debo conectarme: ')
-    # username = input('Introduce tu nombre de usuario: ')
-    # software = input('Introduce el nombre del software cuyos casos de prueba quieres extraer: ')
-    # project_name = input('Introduce el nombre del proyecto/versión: ')
+    database = input('Introduce la base de datos a la que debo conectarme: ')
+    username = input('Introduce tu nombre de usuario: ')
+    software = input('Introduce el nombre del software cuyos casos de prueba quieres extraer: ')
+    project_name = input('Introduce el nombre del proyecto/versión: ')
 
     onedrive_dir = os.getenv('OneDrive')
     # Save software and project_name in a file to be read by the DXL script, as the cannot be passed as parameters
@@ -288,26 +256,72 @@ def get_dxl():
 
 
 def execute_tests():
+    '''
     screen_info = get_screen_info()
     my_tests = selenium_tests.Tests(screen_info)
     my_tests.setup_method()
+    '''
+    '''
     json_str = '{"URL": "https://impact-neo-ced.enaire.es/#/login?redirect=%2Fmain%2Fmaster", "actions": [{"callFunction": "check_image_present", "params": [{"alt": "logo enaire"}]}, {"callFunction": "check_existing_inputs", "params": [{"id": "input-16", "text": ""}, {"id": "password", "text": ""}]}, {"callFunction": "check_elements_exist", "params": [{"type": "button", "text": "ACCESS PROBLEM"}, {"type": "button", "text": "Login"}]}]}'
     json_decoder = json.JSONDecoder()
     json_dict = json_decoder.decode(json_str)
+    '''
+    params = {'login_type': 'correct_login', 'select_centre': 'LECM', 'xpath': '//div[@class="dl-ui-select__container"]'}
+    #my_tests.test_login(params)
 
-    # my_tests.test_login()
+    json_str = r'{"URL": "https://impact-neo-ced.enaire.es/#/main/master","actions": {"callFunction": "comprobar_contenido_hover","params": {"xpath": "//img[@alt=\"logo enaire\"]","contenido": [{"xpath": "//div[@class=\"versionTitle\" and contains(text(), \"IMPACTSWVersion\")]"},{"xpath": "//div[@class=\"versionText\"]"},{"xpath": "//div[@class=\"versionTitle\" and contains(text(), \"Date\")]"},{"xpath": "//div[@class=\"versionTitle\" and matches(text(),\"(\\d{2,4}\/{0,1}){3}\\s\\d{2}: \\d{2}\")]"},{"xpath": "//div[@class=\"versionTitle\" and contains(text(), \"NMData\")]"},{"xpath": "//div[@class=\"versionText\" and matches(text(),\"(\/\\w+){1,}(\\d+|\\.){0,}\")]"}],"tipo_comprobacion": "y"}}}'
+    print('{', json_str.count('{'))
+    print('}', json_str.count('}'))
+    print('[', json_str.count('['))
+    print(']', json_str.count(']'))
+    print('(', json_str.count('('))
+    print(')', json_str.count(')'))
+    print('"', json_str.count('"'))
 
-    for action in json_dict['actions']:
-        match action['callFunction']:
-            case 'check_elements_exist':
-                my_tests.go_to_url(json_dict['URL'])
-                my_tests.check_elements_exist(action['params'])
+    json_decoder = json.JSONDecoder()
+    json_dict = json_decoder.decode(json_str)
+    params = json_dict['actions']['params']
+    l = 0
+    '''
+    my_tests.comprobar_contenido_hover(params)
+    my_tests.logout()
+
+    params = {'login_type': 'empty_fields'}
+    my_tests.test_login(params)
+
+    params = {'login_type': 'empty_username'}
+    my_tests.test_login(params)
+
+    params = {'login_type': 'empty_password'}
+    my_tests.test_login(params)
+
+    params = {'login_type': 'wrong_input'}
+    my_tests.test_login(params)
 
     input('Press Enter when ready to exit')
     my_tests.teardown_method()
+    '''
+    #my_tests.check_logout()
 
 
 def main():
+
+    json_text = '{"URL": "https://impact-neo-ced.enaire.es/#/login?redirect=%2Fmain%2Fmaster", "actions": {"callFunction": "comprobar_resolucion_pantalla", "params": {"width": 3840, "height": 2160}}}'
+
+    json_decoder = json.JSONDecoder()
+    json_text = json_text.replace('\r\n', '')
+    try:
+        decoded_json = json_decoder.decode(json_text.replace('\r\n', ''))
+        url = decoded_json['URL']
+        acciones = decoded_json['actions']
+        funcion = acciones['callFunction']
+        params = acciones['params']
+        l = 0
+
+    except json.decoder.JSONDecodeError as e:
+        decoded_json = 'Error: ' + str(e.args)
+        return decoded_json
+
     if len(sys.argv) > 0:
         if '-h' in sys.argv or '--help' in sys.argv:
             print('Options:\n -h,--help\tShow program options and examples\n-d,--get-dxl\tGet DOORS Tests DXL content and export to CSV file\n-t,--tests\tExecute tests')
