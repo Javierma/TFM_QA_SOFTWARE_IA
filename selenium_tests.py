@@ -1433,7 +1433,11 @@ class Tests:
     def comprobar_elementos_habilitados(self, params):
         elementos = self.buscar_elementos(params)
         for elemento in elementos:
-            print(elemento.is_enabled())
+            if params['habilitado']:
+                print(elemento.is_enabled())
+
+            else:
+                print(elemento.is_enabled() is False)
 
     def comprobar_existencia_elemento(self, params):
         comprobacion_ok = False
