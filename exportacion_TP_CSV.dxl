@@ -1,0 +1,93 @@
+﻿/* Declaramos variables a utilizar en el resto de nuestro código */
+string NOMBRE_MODULO = " - TP "
+string NOMBRE_MODULO_2 = " - Pruebas "
+string NOMBRE_PROYECTO = ""
+string NOMBRE_SOFTWARE = ""
+
+
+/* Leemos el fichero de configuración, que nos indicará los valores de NOMBRE_PROYECTO y NOMBRE_SOFTWARE */
+/* Indicamos el nombre del archivo */
+string ficheroConfiguracion = getenv("OneDrive") + "\\Documents\\DOORS_Y_CHANGE\\SCRIPTS DXL\\config_proyecto_sw.txt"
+
+/* Abrimos el archivo, leemos sus valores y los asociamos a las variables */
+Stream configFichero = read ficheroConfiguracion
+configFichero>>NOMBRE_SOFTWARE
+configFichero>>NOMBRE_PROYECTO
+
+/* Cerramos el fichero*/
+close configFichero 
+
+Project proyecto = project "/" NOMBRE_PROYECTO
+
+Item elemento
+module modulo = null
+Object objeto = null
+int offset = null
+int longitudTexto = null
+bool distinguirMayusculas = true
+bool descendente =false
+
+/* Directorio en que se guardarán los CSVs */
+string nombreFicheroSalida = getenv("OneDrive") + "\\Desktop\\TPs_" + NOMBRE_SOFTWARE
+
+/* Obtenemos los distintos documentos del plan de pruebas */
+for elemento in proyecto do {
+ 
+ if ((findPlainText(fullName(elemento), "Plantillas", offset, longitudTexto, distinguirMayusculas, descendente) == false) && ((findPlainText(fullName(elemento), NOMBRE_PROYECTO, offset, longitudTexto, distinguirMayusculas, descendente))  || (findPlainText(fullName(elemento), NOMBRE_SOFTWARE, offset, longitudTexto, distinguirMayusculas, descendente))) && ((findPlainText(fullName(elemento), NOMBRE_moduloULO, offset, longitudTexto, distinguirMayusculas, descendente)) || (findPlainText(fullName(elemento), NOMBRE_MODULO_2, offset, longitudTexto, distinguirMayusculas, descendente))))
+ {
+   /* Guardamos la vista por defecto en una variable y cambiamos la vista por defecto, ya que de lo contrario no será posible obtener la versión, build y patch */
+   modulo = read (fullName elemento, false)
+   string moduloDefaultView = getDefaultViewFormodule(modulo)
+   setDefaultViewForModule(modulo, "R0 - Results")
+   close modulo
+
+   /* Volvemos a abrir el módulo, en esta ocasión para la lectura */
+   modulo = read (fullName elemento, false)
+   
+   //print "Procesando " fullName elemento "\n"
+
+   /* Obtenemos el nombre del módulo y lo moduloificamos de cara al nombre del fichero */
+   string nombreModulo = stripPath(fullName(elemento), false)
+
+   for(i=0;i < length(nombreModulo);i++)
+   {
+      if ((nombreModulo[i] == '-') || (nombreModulo[i] == '/'))
+      {
+          nombreModulo = nombreModulo[0:i-1] + nombreModulo[i+1:]
+      } 
+      if ((nombreModulo[i] == ' ') || (nombreModulo[i] == '.'))
+      {
+          nombreModulo = nombreModulo[0:i-1] + "_" + nombreModulo[i+1:]
+      }
+   }
+
+   string nombreFicheroCSV = nombreFicheroSalida + "\\" + nombreModulo + ".csv"
+
+   /* Leemos los valores que nos interesan y los guardamos en un fichero CSV */
+   Stream streamFicheroCSV = write nombreFicheroCSV
+   streamFicheroCSV << "Version_Build_Patch;-;Code;-;Type;-;Test\n"
+   for objeto in modulo do
+   {
+	string textoObjeto = objeto."Object Text"
+	if (length(textoObjeto) > 0)
+      {
+          streamFicheroCSV << objeto."TIM SW Version" "." objeto."TIM SW Build" "." objeto."TIM SW Patch" ";-;" objeto."TIM Code" ";-;" objeto."TIM Object Type" ";-;" objeto."Object Heading" "\n" objeto."Object Text" "\n"
+      }
+      else
+      {
+	    streamFicheroCSV << objeto."TIM SW Version" "." objeto."TIM SW Build" "." objeto."TIM SW Patch" ";-;" objeto."TIM Code" ";-;" objeto."TIM Object Type" ";-;" objeto."Object Heading" "\n"
+      }	
+   }
+
+   /* Cerramos el CSV generdo y el módulo. Ojo que esto lo cierra si estaba gráficamente abierto */
+   close streamFicheroCSV
+   close modulo
+
+   /* Volvemos a establecer la vista por defecto a la que teníamos */
+   modulo = read (fullName elemento, false)
+   setDefaultViewForModule(modulo, moduloDefaultView)
+   close modulo
+
+ }
+}
+
